@@ -15,6 +15,7 @@ import { useArtifactSelector } from '@/hooks/use-artifact';
 import { toast } from 'sonner';
 import { unstable_serialize } from 'swr/infinite';
 import { getChatHistoryPaginationKey } from './sidebar-history';
+import Footer from '@/components/footer';
 
 export function Chat({
   id,
@@ -102,6 +103,7 @@ export function Chat({
             />
           )}
         </form>
+        <Footer />
       </div>
 
       <Artifact
