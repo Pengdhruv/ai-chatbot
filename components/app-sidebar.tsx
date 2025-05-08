@@ -3,7 +3,7 @@
 import type { User } from 'next-auth';
 import { useRouter } from 'next/navigation';
 
-import { PlusIcon } from '@/components/icons';
+import { PlusIcon, SettingsIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,25 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 PenguinChat
               </span>
             </Link>
+            <div className="flex items-center gap-2">
+              {user?.is_admin && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      className="p-2 h-fit"
+                      onClick={() => {
+                        setOpenMobile(false)
+                        router.push("/admin")
+                      }}
+                    >
+                      <SettingsIcon />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent align="end">Admin Portal</TooltipContent>
+                </Tooltip>
+              )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -55,6 +74,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               </TooltipTrigger>
               <TooltipContent align="end">New Chat</TooltipContent>
             </Tooltip>
+            </div>
           </div>
         </SidebarMenu>
       </SidebarHeader>

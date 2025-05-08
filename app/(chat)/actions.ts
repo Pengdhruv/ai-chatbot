@@ -7,9 +7,17 @@ import {
   deleteMessagesByChatIdAfterTimestamp,
   getMessageById,
   updateChatVisiblityById,
+  getTokenBudgetByUserIdAndModelId,
+  updateTokenUsage,
+  createTokenRequest,
 } from '@/lib/db/queries';
 import { VisibilityType } from '@/components/visibility-selector';
 import { myProvider } from '@/lib/ai/providers';
+
+import { calculateTokens } from "@/lib/utils/token-calculator"
+
+import { auth } from "@/app/(auth)/auth"
+import { redirect } from "next/navigation"
 
 export async function saveChatModelAsCookie(model: string) {
   const cookieStore = await cookies();
@@ -51,4 +59,67 @@ export async function updateChatVisibility({
   visibility: VisibilityType;
 }) {
   await updateChatVisiblityById({ chatId, visibility });
+}
+
+export async function getTokenBudgetForModel(modelId: string) {
+  const session = await auth()
+
+  if (!session?.user) {
+    return null
+  }
+
+  const budget = await getTokenBudgetByUserIdAndModelId({
+    userId: session.user.id,
+    modelId,
+  })
+
+  return budget || { totalBudget: 0, usedBudget: 0 }
+}
+
+export async function updateTokenUsageForChat({
+  modelId,
+  prompt,
+  response,
+}: {
+  modelId: string
+  prompt: string
+  response: string
+}) {
+  const session = await auth()
+
+  if (!session?.user) {
+    return
+  }
+
+  const tokensUsed = calculateTokens(prompt, response)
+  console.debug("calculateTokens")
+  console.debug(tokensUsed)
+
+  await updateTokenUsage({
+    userId: session.user.id,
+    modelId,
+    tokensUsed,
+  })
+
+  return tokensUsed
+}
+
+export async function requestMoreTokens({
+  modelId,
+  requestedAmount,
+}: {
+  modelId: string
+  requestedAmount: number
+}) {
+  const session = await auth()
+
+  if (!session?.user) {
+    redirect("/login")
+  }
+
+  return await createTokenRequest({
+    userId: session.user.id,
+    modelId,
+    requestedAmount,
+  })
 }

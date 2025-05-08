@@ -25,6 +25,8 @@ import {
   vote,
   type DBMessage,
   type Chat,
+  tokenBudget,
+  tokenRequest,
 } from './schema';
 import type { ArtifactKind } from '@/components/artifact';
 import { generateHashedPassword } from './utils';
@@ -420,5 +422,210 @@ export async function updateChatVisiblityById({
   } catch (error) {
     console.error('Failed to update chat visibility in database');
     throw error;
+  }
+}
+
+export async function getAllUsers() {
+  try {
+    return await db.select().from(user).orderBy(asc(user.email))
+  } catch (error) {
+    console.error("Failed to get all users from database")
+    throw error
+  }
+}
+
+export async function updateUserAdminStatus({ userId, is_admin }: { userId: string; is_admin: boolean }) {
+  try {
+    return await db.update(user).set({ is_admin }).where(eq(user.id, userId))
+  } catch (error) {
+    console.error("Failed to update user admin status in database")
+    throw error
+  }
+}
+
+export async function getTokenBudgetByUserIdAndModelId({ userId, modelId }: { userId: string; modelId: string }) {
+
+  try {
+    const [budget] = await db
+      .select()
+      .from(tokenBudget)
+      .where(and(eq(tokenBudget.userId, userId), eq(tokenBudget.modelId, modelId)))
+
+    return budget
+  } catch (error) {
+    console.error(error)
+    console.error("Failed to get token budget from database")
+    throw error
+  }
+}
+
+export async function getAllTokenBudgetsByUserId({ userId }: { userId: string }) {
+  try {
+    return await db.select().from(tokenBudget).where(eq(tokenBudget.userId, userId))
+  } catch (error) {
+    console.error("Failed to get all token budgets for user from database")
+    throw error
+  }
+}
+
+export async function upsertTokenBudget({
+  userId,
+  modelId,
+  totalBudget,
+}: {
+  userId: string
+  modelId: string
+  totalBudget: number
+}) {
+  try {
+    const [existingBudget] = await db
+      .select()
+      .from(tokenBudget)
+      .where(and(eq(tokenBudget.userId, userId), eq(tokenBudget.modelId, modelId)))
+
+    if (existingBudget) {
+      return await db
+        .update(tokenBudget)
+        .set({
+          totalBudget,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(tokenBudget.userId, userId), eq(tokenBudget.modelId, modelId)))
+        .returning()
+    }
+
+    return await db
+      .insert(tokenBudget)
+      .values({
+        userId,
+        modelId,
+        totalBudget,
+        usedBudget: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+  } catch (error) {
+    console.error("Failed to upsert token budget in database")
+    throw error
+  }
+}
+
+export async function updateTokenUsage({
+  userId,
+  modelId,
+  tokensUsed,
+}: {
+  userId: string
+  modelId: string
+  tokensUsed: number
+}) {
+  try {
+    const [budget] = await db
+      .select()
+      .from(tokenBudget)
+      .where(and(eq(tokenBudget.userId, userId), eq(tokenBudget.modelId, modelId)))
+
+    if (!budget) {
+      throw new Error(`No budget found for user ${userId} and model ${modelId}`)
+    }
+
+    return await db
+      .update(tokenBudget)
+      .set({
+        usedBudget: budget.usedBudget + tokensUsed,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(tokenBudget.userId, userId), eq(tokenBudget.modelId, modelId)))
+      .returning()
+  } catch (error) {
+    console.error("Failed to update token usage in database")
+    throw error
+  }
+}
+
+export async function createTokenRequest({
+  userId,
+  modelId,
+  requestedAmount,
+}: {
+  userId: string
+  modelId: string
+  requestedAmount: number
+}) {
+  try {
+    return await db
+      .insert(tokenRequest)
+      .values({
+        userId,
+        modelId,
+        requestedAmount,
+        status: "pending",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+  } catch (error) {
+    console.error("Failed to create token request in database")
+    throw error
+  }
+}
+
+export async function getAllTokenRequests() {
+  try {
+    return await db
+      .select({
+        request: tokenRequest,
+        user: {
+          id: user.id,
+          email: user.email,
+        },
+      })
+      .from(tokenRequest)
+      .innerJoin(user, eq(tokenRequest.userId, user.id))
+      .where(eq(tokenRequest.status, "pending"))
+      .orderBy(desc(tokenRequest.createdAt))
+  } catch (error) {
+    console.error("Failed to get all token requests from database")
+    throw error
+  }
+}
+
+export async function updateTokenRequestStatus({
+  requestId,
+  status,
+}: {
+  requestId: string
+  status: "approved" | "rejected"
+}) {
+  try {
+    const [updatedRequest] = await db
+      .update(tokenRequest)
+      .set({
+        status,
+        updatedAt: new Date(),
+      })
+      .where(eq(tokenRequest.id, requestId))
+      .returning()
+
+    if (status === "approved" && updatedRequest) {
+      // If approved, update the user's token budget
+      await upsertTokenBudget({
+        userId: updatedRequest.userId,
+        modelId: updatedRequest.modelId,
+        totalBudget:
+          (
+            await getTokenBudgetByUserIdAndModelId({
+              userId: updatedRequest.userId,
+              modelId: updatedRequest.modelId,
+            })
+          )?.totalBudget + updatedRequest.requestedAmount || updatedRequest.requestedAmount,
+      })
+    }
+
+    return updatedRequest
+  } catch (error) {
+    console.error("Failed to update token request status in database")
+    throw error
   }
 }
