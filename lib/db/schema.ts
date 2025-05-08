@@ -153,8 +153,6 @@ export const suggestion = pgTable(
 
 export type Suggestion = InferSelectModel<typeof suggestion>;
 
-// New tables for token management
-
 export const tokenBudget = pgTable("TokenBudget", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   userId: uuid("userId")
@@ -184,3 +182,34 @@ export const tokenRequest = pgTable("TokenRequest", {
 })
 
 export type TokenRequest = InferSelectModel<typeof tokenRequest>
+
+export interface TokenUsageData {
+  timeSeriesData: {
+    date: string
+    modelId: string
+    userId: string
+    tokensUsed: number
+  }[]
+  availableModels: string[]
+  availableUsers: {
+    id: string
+    email: string
+  }[]
+  topUsers: {
+    userId: string
+    email: string
+    tokensUsed: number
+  }[]
+}
+
+export interface UserTokenUsage {
+  id: string
+  email: string
+  lastActive: Date | null
+  totalTokensUsed: number
+  modelUsage: {
+    modelId: string
+    totalBudget: number
+    usedBudget: number
+  }[]
+}

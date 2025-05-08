@@ -58,3 +58,73 @@ export async function updateTokenRequestStatus({
   await checkAdmin()
   return await dbUpdateTokenRequestStatus({ requestId, status })
 }
+
+export async function updateUserTokenBudget({
+  userId,
+  modelId,
+  totalBudget,
+}: {
+  userId: string
+  modelId: string
+  totalBudget: number
+}) {
+  await checkAdmin()
+  return await dbUpsertTokenBudget({ userId, modelId, totalBudget })
+}
+
+export async function setTokenBudgetToZero({
+  userId,
+  modelId,
+}: {
+  userId: string
+  modelId: string
+}) {
+  await checkAdmin()
+  return await dbUpsertTokenBudget({ userId, modelId, totalBudget: 0 })
+}
+
+export async function bulkUpdateTokenBudget({
+  userIds,
+  modelId,
+  totalBudget,
+}: {
+  userIds: string[]
+  modelId: string
+  totalBudget: number
+}) {
+  await checkAdmin()
+
+  const results = await Promise.all(userIds.map((userId) => dbUpsertTokenBudget({ userId, modelId, totalBudget })))
+
+  return results
+}
+
+export async function bulkSetTokenBudgetToZero({
+  userIds,
+  modelIds,
+}: {
+  userIds: string[]
+  modelIds: string[]
+}) {
+  await checkAdmin()
+
+  const results = await Promise.all(
+    userIds.flatMap((userId) => modelIds.map((modelId) => dbUpsertTokenBudget({ userId, modelId, totalBudget: 0 }))),
+  )
+
+  return results
+}
+
+export async function bulkUpdateTokenRequestStatus({
+  requestIds,
+  status,
+}: {
+  requestIds: string[]
+  status: "approved" | "rejected"
+}) {
+  await checkAdmin()
+
+  const results = await Promise.all(requestIds.map((requestId) => dbUpdateTokenRequestStatus({ requestId, status })))
+
+  return results
+}
