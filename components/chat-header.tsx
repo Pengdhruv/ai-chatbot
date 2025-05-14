@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { ModelSelector } from "@/components/model-selector"
 import { VisibilitySelector } from "@/components/visibility-selector"
 import { TokenBudgetDisplay } from "@/components/token-budget-display"
@@ -23,6 +24,7 @@ export function ChatHeader({
   onChatModelChange?: (model: string) => void
   onVisibilityChange?: (visibility: string) => void
 }) {
+  const { state, openMobile } = useSidebar()
   const [tokenBudget, setTokenBudget] = useState<{ totalBudget: number; usedBudget: number } | null>(null)
 
   useEffect(() => {
@@ -38,13 +40,25 @@ export function ChatHeader({
     fetchTokenBudget()
   }, [selectedChatModel])
 
+  const shouldShowSidebarTrigger = state === "collapsed" || !openMobile
+
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <ModelSelector selectedModelId={selectedChatModel} onChange={onChatModelChange} />
-        {!isReadonly && (
-          <VisibilitySelector selectedVisibilityType={selectedVisibilityType} onChange={onVisibilityChange} />
+    <header className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b bg-background sm:px-6">
+      <div className="flex flex-wrap items-center gap-3">
+        {/* ✅ Show only if collapsed or closed on mobile */}
+        {shouldShowSidebarTrigger && (
+          <SidebarTrigger className="block md:content" />
         )}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <ModelSelector selectedModelId={selectedChatModel} onChange={onChatModelChange} />
+          {!isReadonly && (
+            <VisibilitySelector
+              selectedVisibilityType={selectedVisibilityType}
+              onChange={onVisibilityChange}
+            />
+          )}
+        </div>
       </div>
 
       {tokenBudget && (
@@ -54,6 +68,6 @@ export function ChatHeader({
           usedTokens={tokenBudget.usedBudget}
         />
       )}
-    </div>
+    </header>
   )
 }
