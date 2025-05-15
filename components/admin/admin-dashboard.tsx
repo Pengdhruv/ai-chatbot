@@ -75,7 +75,7 @@ export function AdminDashboard({
         </TabsList>
 
         <TabsContent value="users" className="mt-6">
-          <UserManagement users={users} />
+          <UserManagement usersWithUsage={userTokenUsage} />
         </TabsContent>
 
         <TabsContent value="requests" className="mt-6">
