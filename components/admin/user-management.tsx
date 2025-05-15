@@ -1,45 +1,54 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Checkbox } from "@/components/ui/checkbox"
-import { chatModels } from "@/lib/ai/models"
+import { useState, useMemo } from "react";
 import {
-  updateUserAdminStatus,
-  upsertTokenBudget,
-  bulkUpdateTokenBudget,
-  bulkSetTokenBudgetToZero,
-} from "@/app/admin/actions"
-import type { User } from "@/lib/db/schema"
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { chatModels } from "@/lib/ai/models";
+import { updateUserAdminStatus, upsertTokenBudget, bulkUpdateTokenBudget, bulkSetTokenBudgetToZero } from "@/app/admin/actions";
+import type { UserTokenUsage } from "@/lib/db/schema";
+import { toast } from "sonner";
+
 
 interface UserManagementProps {
-  users: User[]
+  usersWithUsage: UserTokenUsage[];
 }
 
-export function UserManagement({ users }: UserManagementProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedUsers, setSelectedUsers] = useState<Record<string, boolean>>({})
-  const [isBulkTokenDialogOpen, setIsBulkTokenDialogOpen] = useState(false)
-  const [isBulkRevokeDialogOpen, setIsBulkRevokeDialogOpen] = useState(false)
+export function UserManagement({ usersWithUsage }: UserManagementProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedUsers, setSelectedUsers] = useState<Record<string, boolean>>({});
+  const [isBulkTokenDialogOpen, setIsBulkTokenDialogOpen] = useState(false);
+  const [isBulkRevokeDialogOpen, setIsBulkRevokeDialogOpen] = useState(false);
 
-  const filteredUsers = users.filter((user) => user.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredUsers = usersWithUsage.filter((user) =>
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()));
+  const selectedUserIds = Object.entries(selectedUsers).filter(([_, selected]) => selected).map(([userId]) => userId);
+  const hasSelectedUsers = selectedUserIds.length > 0;
 
-  const selectedUserIds = Object.entries(selectedUsers)
-    .filter(([_, isSelected]) => isSelected)
-    .map(([userId]) => userId)
-
-  const hasSelectedUsers = selectedUserIds.length > 0
+  const tokenSummary = useMemo(() => {
+    const modelTokenMap: Record<string, number> = {};
+    usersWithUsage.forEach((user) => {
+      for (const usage of user.modelUsage || []) {
+        modelTokenMap[usage.modelId] = (modelTokenMap[usage.modelId] || 0) + (usage.totalBudget ?? 0);
+      }
+    });
+    return modelTokenMap;
+  }, [usersWithUsage]);
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <Input
           placeholder="Search users by email..."
           value={searchTerm}
@@ -50,7 +59,7 @@ export function UserManagement({ users }: UserManagementProps) {
         <div className="flex space-x-2">
           <Dialog open={isBulkTokenDialogOpen} onOpenChange={setIsBulkTokenDialogOpen}>
             <DialogTrigger asChild>
-              <Button disabled={!hasSelectedUsers}>Assign Tokens to Selected</Button>
+              <Button disabled={!hasSelectedUsers}>Assign Tokens</Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
@@ -62,9 +71,7 @@ export function UserManagement({ users }: UserManagementProps) {
 
           <Dialog open={isBulkRevokeDialogOpen} onOpenChange={setIsBulkRevokeDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="destructive" disabled={!hasSelectedUsers}>
-                Revoke Tokens from Selected
-              </Button>
+              <Button variant="destructive" disabled={!hasSelectedUsers}>Revoke Tokens</Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
@@ -76,101 +83,102 @@ export function UserManagement({ users }: UserManagementProps) {
         </div>
       </div>
 
-      <div className="mb-4 flex items-center space-x-2">
-        <Checkbox
-          id="select-all"
-          checked={filteredUsers.length > 0 && filteredUsers.every((user) => selectedUsers[user.id])}
-          onCheckedChange={(checked) => {
-            if (checked) {
-              const newSelected = { ...selectedUsers }
-              filteredUsers.forEach((user) => {
-                newSelected[user.id] = true
-              })
-              setSelectedUsers(newSelected)
-            } else {
-              const newSelected = { ...selectedUsers }
-              filteredUsers.forEach((user) => {
-                newSelected[user.id] = false
-              })
-              setSelectedUsers(newSelected)
-            }
-          }}
-        />
-        <Label htmlFor="select-all">Select All</Label>
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold">Token Summary</h2>
+        <ul className="text-sm text-muted-foreground grid md:grid-cols-3 gap-2">
+          {chatModels.map((model) => (
+            <li key={model.id}>
+              {model.name}: <strong>{tokenSummary[model.id] || 0}</strong>
+            </li>
+          ))}
+        </ul>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredUsers.map((user) => (
-          <UserCard
-            key={user.id}
-            user={user}
-            isSelected={!!selectedUsers[user.id]}
-            onSelectChange={(selected) => {
-              setSelectedUsers((prev) => ({
-                ...prev,
-                [user.id]: selected,
-              }))
-            }}
-          />
-        ))}
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>
+              <Checkbox
+                checked={filteredUsers.length > 0 && filteredUsers.every((user) => selectedUsers[user.id])}
+                onCheckedChange={(checked) => {
+                  const newSelected = { ...selectedUsers };
+                  filteredUsers.forEach((user) => {
+                    newSelected[user.id] = !!checked;
+                  });
+                  setSelectedUsers(newSelected);
+                }}
+              />
+            </TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Admin</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+
+        <TableBody>
+          {filteredUsers.map((user) => (
+            <TableRow key={user.id}>
+              <TableCell>
+                <Checkbox
+                  checked={!!selectedUsers[user.id]}
+                  onCheckedChange={(checked) =>
+                    setSelectedUsers((prev) => ({ ...prev, [user.id]: !!checked }))
+                  }
+                />
+              </TableCell>
+              <TableCell className="truncate max-w-xs">{user.email}</TableCell>
+              <TableCell>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id={`admin-${user.id}`}
+                    checked={user.is_admin}
+                    onCheckedChange={async () => {
+                      const newVal = !user.is_admin;
+                      await updateUserAdminStatus({ userId: user.id, is_admin: newVal });
+                      user.is_admin = newVal;
+                    }}
+                  />
+                  <Label htmlFor={`admin-${user.id}`}>Admin</Label>
+                </div>
+              </TableCell>
+              <TableCell>
+                {(() => {
+                  const [isManageOpen, setIsManageOpen] = useState(false);
+                  const [isAllocationOpen, setIsAllocationOpen] = useState(false);
+
+                  return (
+                    <>
+                      <Dialog open={isManageOpen} onOpenChange={setIsManageOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="mr-2">Manage Tokens</Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Manage Token Budgets for {user.email}</DialogTitle>
+                          </DialogHeader>
+                          <TokenBudgetForm userId={user.id} onComplete={() => setIsManageOpen(false)} />
+                        </DialogContent>
+                      </Dialog>
+
+                      <TokenAllocationDialog
+                        user={user}
+                        open={isAllocationOpen}
+                        onOpenChange={setIsAllocationOpen}
+                      />
+
+                      <Button variant="secondary" size="sm" onClick={() => setIsAllocationOpen(true)}>
+                        View Allocations
+                      </Button>
+                    </>
+                  );
+                })()}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
-  )
-}
-
-function UserCard({
-  user,
-  isSelected,
-  onSelectChange,
-}: {
-  user: User
-  isSelected: boolean
-  onSelectChange: (selected: boolean) => void
-}) {
-  const [is_admin, setIsAdmin] = useState(user.is_admin)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-
-  const handleAdminToggle = async () => {
-    const newStatus = !is_admin
-    setIsAdmin(newStatus)
-    await updateUserAdminStatus({ userId: user.id, is_admin: newStatus })
-  }
-
-  return (
-    <Card className={isSelected ? "border-primary" : undefined}>
-      <CardHeader>
-        <CardTitle className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={(checked) => onSelectChange(!!checked)}
-              id={`select-user-${user.id}`}
-            />
-            <span className="truncate">{user.email}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Switch checked={is_admin} onCheckedChange={handleAdminToggle} id={`admin-switch-${user.id}`} />
-            <Label htmlFor={`admin-switch-${user.id}`}>Admin</Label>
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" className="w-full">
-              Manage Token Budgets
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Manage Token Budgets for {user.email}</DialogTitle>
-            </DialogHeader>
-            <TokenBudgetForm userId={user.id} onComplete={() => setIsDialogOpen(false)} />
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
-  )
+  );
 }
 
 function TokenBudgetForm({ userId, onComplete }: { userId: string; onComplete: () => void }) {
@@ -387,4 +395,157 @@ function BulkRevokeForm({
       </Button>
     </form>
   )
+}
+
+interface TokenAllocationDialogProps {
+  user: {
+    id: string;
+    email: string;
+    modelUsage: {
+      modelId: string;
+      totalBudget: number;
+      usedBudget: number;
+    }[];
+  };
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function TokenAllocationDialog({ user, open, onOpenChange }: TokenAllocationDialogProps) {
+  const [editingModel, setEditingModel] = useState<string | null>(null);
+  const [newAmount, setNewAmount] = useState("");
+  const [loadingModelId, setLoadingModelId] = useState<string | null>(null);
+
+  const handleAddTokens = async (modelId: string) => {
+    if (!newAmount) return;
+    try {
+      setLoadingModelId(modelId);
+      const current = user.modelUsage.find((m) => m.modelId === modelId);
+      const total = (current?.totalBudget || 0) + parseInt(newAmount);
+      await upsertTokenBudget({ userId: user.id, modelId, totalBudget: total });
+      toast.success(`${newAmount} tokens added to ${modelId}`);
+
+      onOpenChange(false);
+    } finally {
+      setLoadingModelId(null);
+    }
+  };
+
+  const handleRevoke = async (modelId: string) => {
+    try {
+      setLoadingModelId(modelId);
+      await bulkSetTokenBudgetToZero({ userIds: [user.id], modelIds: [modelId] });
+
+      toast.error(`Tokens revoked from ${modelId}`);
+      onOpenChange(false);
+    } finally {
+      setLoadingModelId(null);
+    }
+  };
+
+  const sortedModelUsage = [...(user.modelUsage || [])].sort((a, b) => {
+    const aAvailable = a.totalBudget - a.usedBudget;
+    const bAvailable = b.totalBudget - b.usedBudget;
+  
+    if (aAvailable !== bAvailable) {
+      return bAvailable - aAvailable;
+    }
+  
+    return b.totalBudget - a.totalBudget;
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+<DialogContent
+  className="max-w-lg p-0 max-h-[90vh] overflow-hidden"
+  style={{ display: "flex", flexDirection: "column", height: "90vh" }}
+>
+  <div className="p-6 border-b sticky top-0 z-10 bg-background shrink-0">
+    <DialogTitle className="text-lg font-semibold">
+      Token Allocation for {user.email}
+    </DialogTitle>
+  </div>
+
+  <div className="overflow-y-auto px-6 py-4 space-y-4 grow">
+    {user.modelUsage?.length ? (
+      sortedModelUsage.map((budget) => {
+        const model = chatModels.find((m) => m.id === budget.modelId);
+        const percent = Math.min(100, Math.floor((budget.usedBudget / budget.totalBudget) * 100)) || 0;
+        const remaining = budget.totalBudget - budget.usedBudget;
+
+        return (
+          <div key={budget.modelId} className="border p-4 rounded-md space-y-2">
+            <div className="flex justify-between items-center text-sm font-medium">
+              <span>{model?.name || budget.modelId}</span>
+              <span className="text-muted-foreground">{percent}% used</span>
+            </div>
+
+            <div className="relative h-2 bg-muted-foreground/10 rounded-full">
+              <div
+                className="absolute top-0 left-0 h-2 bg-primary rounded-full"
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+
+            <div className="text-xs text-muted-foreground mt-1">
+              Total: <strong>{budget.totalBudget}</strong> | Used: <strong>{budget.usedBudget}</strong> | Remaining: <strong>{remaining}</strong>
+            </div>
+
+            <div className="flex items-center gap-2 mt-3">
+              {editingModel === budget.modelId ? (
+                <>
+                  <Input
+                    placeholder="Tokens"
+                    type="number"
+                    min="1"
+                    value={newAmount}
+                    onChange={(e) => setNewAmount(e.target.value)}
+                    className="w-24"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => handleAddTokens(budget.modelId)}
+                    disabled={loadingModelId === budget.modelId}
+                  >
+                    Add
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditingModel(null)}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingModel(budget.modelId)}
+                  >
+                    Add Tokens
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleRevoke(budget.modelId)}
+                    disabled={loadingModelId === budget.modelId}
+                  >
+                    Revoke
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })
+    ) : (
+      <p className="text-muted-foreground text-sm">No allocations found for this user.</p>
+    )}
+  </div>
+</DialogContent>
+
+    </Dialog>
+  );
 }
