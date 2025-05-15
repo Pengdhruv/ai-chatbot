@@ -19,7 +19,6 @@ export function SidebarToggle({
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          data-testid="sidebar-toggle-button"
           onClick={toggleSidebar}
           variant="outline"
           className="md:px-2 md:h-fit"

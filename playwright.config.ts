@@ -29,9 +29,9 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: 0,
+  retries: process.env.CI ? 2 : 1,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 2 : 8,
+  workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -40,27 +40,61 @@ export default defineConfig({
     baseURL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'retain-on-failure',
+    trace: 'on-first-retry',
   },
 
   /* Configure global timeout for each test */
-  timeout: 120 * 1000, // 120 seconds
+  timeout: 60 * 1000, // 30 seconds
   expect: {
-    timeout: 120 * 1000,
+    timeout: 60 * 1000,
   },
 
   /* Configure projects */
   projects: [
     {
-      name: 'e2e',
-      testMatch: /e2e\/.*.test.ts/,
+      name: 'setup:auth',
+      testMatch: /e2e\/auth.setup.ts/,
+    },
+    {
+      name: 'setup:reasoning',
+      testMatch: /e2e\/reasoning.setup.ts/,
+      dependencies: ['setup:auth'],
       use: {
         ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/session.json',
+      },
+    },
+    {
+      name: 'chat',
+      testMatch: /e2e\/chat.test.ts/,
+      dependencies: ['setup:auth'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/session.json',
+      },
+    },
+    {
+      name: 'reasoning',
+      testMatch: /e2e\/reasoning.test.ts/,
+      dependencies: ['setup:reasoning'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.reasoning/session.json',
+      },
+    },
+    {
+      name: 'artifacts',
+      testMatch: /e2e\/artifacts.test.ts/,
+      dependencies: ['setup:auth'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/session.json',
       },
     },
     {
       name: 'routes',
       testMatch: /routes\/.*.test.ts/,
+      dependencies: [],
       use: {
         ...devices['Desktop Chrome'],
       },
@@ -100,7 +134,7 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     command: 'pnpm dev',
-    url: `${baseURL}/ping`,
+    url: baseURL,
     timeout: 120 * 1000,
     reuseExistingServer: !process.env.CI,
   },

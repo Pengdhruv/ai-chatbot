@@ -3,7 +3,6 @@ import 'server-only';
 import {
   and,
   asc,
-  count,
   desc,
   eq,
   gt,
@@ -26,12 +25,9 @@ import {
   vote,
   type DBMessage,
   type Chat,
-  stream,
 } from './schema';
 import type { ArtifactKind } from '@/components/artifact';
-import { generateUUID } from '../utils';
 import { generateHashedPassword } from './utils';
-import type { VisibilityType } from '@/components/visibility-selector';
 
 // Optionally, if not using email/pass login, you can
 // use the Drizzle adapter for Auth.js / NextAuth
@@ -61,31 +57,14 @@ export async function createUser(email: string, password: string) {
   }
 }
 
-export async function createGuestUser() {
-  const email = `guest-${Date.now()}`;
-  const password = generateHashedPassword(generateUUID());
-
-  try {
-    return await db.insert(user).values({ email, password }).returning({
-      id: user.id,
-      email: user.email,
-    });
-  } catch (error) {
-    console.error('Failed to create guest user in database');
-    throw error;
-  }
-}
-
 export async function saveChat({
   id,
   userId,
   title,
-  visibility,
 }: {
   id: string;
   userId: string;
   title: string;
-  visibility: VisibilityType;
 }) {
   try {
     return await db.insert(chat).values({
@@ -93,7 +72,6 @@ export async function saveChat({
       createdAt: new Date(),
       userId,
       title,
-      visibility,
     });
   } catch (error) {
     console.error('Failed to save chat in database');
@@ -105,7 +83,6 @@ export async function deleteChatById({ id }: { id: string }) {
   try {
     await db.delete(vote).where(eq(vote.chatId, id));
     await db.delete(message).where(eq(message.chatId, id));
-    await db.delete(stream).where(eq(stream.chatId, id));
 
     const [chatsDeleted] = await db
       .delete(chat)
@@ -442,70 +419,6 @@ export async function updateChatVisiblityById({
     return await db.update(chat).set({ visibility }).where(eq(chat.id, chatId));
   } catch (error) {
     console.error('Failed to update chat visibility in database');
-    throw error;
-  }
-}
-
-export async function getMessageCountByUserId({
-  id,
-  differenceInHours,
-}: { id: string; differenceInHours: number }) {
-  try {
-    const twentyFourHoursAgo = new Date(
-      Date.now() - differenceInHours * 60 * 60 * 1000,
-    );
-
-    const [stats] = await db
-      .select({ count: count(message.id) })
-      .from(message)
-      .innerJoin(chat, eq(message.chatId, chat.id))
-      .where(
-        and(
-          eq(chat.userId, id),
-          gte(message.createdAt, twentyFourHoursAgo),
-          eq(message.role, 'user'),
-        ),
-      )
-      .execute();
-
-    return stats?.count ?? 0;
-  } catch (error) {
-    console.error(
-      'Failed to get message count by user id for the last 24 hours from database',
-    );
-    throw error;
-  }
-}
-
-export async function createStreamId({
-  streamId,
-  chatId,
-}: {
-  streamId: string;
-  chatId: string;
-}) {
-  try {
-    await db
-      .insert(stream)
-      .values({ id: streamId, chatId, createdAt: new Date() });
-  } catch (error) {
-    console.error('Failed to create stream id in database');
-    throw error;
-  }
-}
-
-export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
-  try {
-    const streamIds = await db
-      .select({ id: stream.id })
-      .from(stream)
-      .where(eq(stream.chatId, chatId))
-      .orderBy(desc(stream.createdAt))
-      .execute();
-
-    return streamIds.map(({ id }) => id);
-  } catch (error) {
-    console.error('Failed to get stream ids by chat id from database');
     throw error;
   }
 }

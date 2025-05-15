@@ -1,13 +1,13 @@
 import { cookies } from 'next/headers';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 import { auth } from '@/app/(auth)/auth';
 import { Chat } from '@/components/chat';
 import { getChatById, getMessagesByChatId } from '@/lib/db/queries';
 import { DataStreamHandler } from '@/components/data-stream-handler';
 import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
-import type { DBMessage } from '@/lib/db/schema';
-import type { Attachment, UIMessage } from 'ai';
+import { DBMessage } from '@/lib/db/schema';
+import { Attachment, UIMessage } from 'ai';
 
 import Footer from "./footer";
 
@@ -22,12 +22,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   const session = await auth();
 
-  if (!session) {
-    redirect('/api/auth/guest');
-  }
-
   if (chat.visibility === 'private') {
-    if (!session.user) {
+    if (!session || !session.user) {
       return notFound();
     }
 
@@ -62,11 +58,9 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         <Chat
           id={chat.id}
           initialMessages={convertToUIMessages(messagesFromDb)}
-          initialChatModel={DEFAULT_CHAT_MODEL}
-          initialVisibilityType={chat.visibility}
+          selectedChatModel={DEFAULT_CHAT_MODEL}
+          selectedVisibilityType={chat.visibility}
           isReadonly={session?.user?.id !== chat.userId}
-          session={session}
-          autoResume={true}
         />
         <DataStreamHandler id={id} />
       </>
@@ -78,11 +72,9 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       <Chat
         id={chat.id}
         initialMessages={convertToUIMessages(messagesFromDb)}
-        initialChatModel={chatModelFromCookie.value}
-        initialVisibilityType={chat.visibility}
+        selectedChatModel={chatModelFromCookie.value}
+        selectedVisibilityType={chat.visibility}
         isReadonly={session?.user?.id !== chat.userId}
-        session={session}
-        autoResume={true}
       />
       <DataStreamHandler id={id} />
     </>

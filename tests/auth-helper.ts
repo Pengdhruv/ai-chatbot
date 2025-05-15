@@ -8,7 +8,6 @@ import {
   type Page,
 } from '@playwright/test';
 import { generateId } from 'ai';
-import { ChatPage } from './pages/chat';
 import { getUnixTime } from 'date-fns';
 
 export type UserContext = {
@@ -20,24 +19,22 @@ export type UserContext = {
 export async function createAuthenticatedContext({
   browser,
   name,
-  chatModel = 'chat-model',
 }: {
   browser: Browser;
   name: string;
-  chatModel?: 'chat-model' | 'chat-model-reasoning';
 }): Promise<UserContext> {
-  const directory = path.join(__dirname, '../playwright/.sessions');
+  const authDir = path.join(__dirname, '../playwright/.auth');
 
-  if (!fs.existsSync(directory)) {
-    fs.mkdirSync(directory, { recursive: true });
+  if (!fs.existsSync(authDir)) {
+    fs.mkdirSync(authDir, { recursive: true });
   }
 
-  const storageFile = path.join(directory, `${name}.json`);
+  const storageFile = path.join(authDir, `${name}.json`);
 
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  const email = `test-${name}@playwright.com`;
+  const email = `test-${name}-${getUnixTime(new Date())}@playwright.com`;
   const password = generateId(16);
 
   await page.goto('http://localhost:3000/register');
@@ -51,12 +48,6 @@ export async function createAuthenticatedContext({
     'Account created successfully!',
   );
 
-  const chatPage = new ChatPage(page);
-  await chatPage.createNewChat();
-  await chatPage.chooseModelFromSelector('chat-model-reasoning');
-  await expect(chatPage.getSelectedModel()).resolves.toEqual('Reasoning model');
-
-  await page.waitForTimeout(1000);
   await context.storageState({ path: storageFile });
   await page.close();
 
@@ -67,15 +58,5 @@ export async function createAuthenticatedContext({
     context: newContext,
     page: newPage,
     request: newContext.request,
-  };
-}
-
-export function generateRandomTestUser() {
-  const email = `test-${getUnixTime(new Date())}@playwright.com`;
-  const password = generateId(16);
-
-  return {
-    email,
-    password,
   };
 }

@@ -1,33 +1,14 @@
 import { compare } from 'bcrypt-ts';
-import NextAuth, { type DefaultSession } from 'next-auth';
+import NextAuth, { type User, type Session } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import { createGuestUser, getUser } from '@/lib/db/queries';
+
+import { getUser } from '@/lib/db/queries';
+
 import { authConfig } from './auth.config';
 import { DUMMY_PASSWORD } from '@/lib/constants';
-import type { DefaultJWT } from 'next-auth/jwt';
 
-export type UserType = 'guest' | 'regular';
-
-declare module 'next-auth' {
-  interface Session extends DefaultSession {
-    user: {
-      id: string;
-      type: UserType;
-    } & DefaultSession['user'];
-  }
-
-  interface User {
-    id?: string;
-    email?: string | null;
-    type: UserType;
-  }
-}
-
-declare module 'next-auth/jwt' {
-  interface JWT extends DefaultJWT {
-    id: string;
-    type: UserType;
-  }
+interface ExtendedSession extends Session {
+  user: User;
 }
 
 export const {
@@ -59,31 +40,27 @@ export const {
 
         if (!passwordsMatch) return null;
 
-        return { ...user, type: 'regular' };
-      },
-    }),
-    Credentials({
-      id: 'guest',
-      credentials: {},
-      async authorize() {
-        const [guestUser] = await createGuestUser();
-        return { ...guestUser, type: 'guest' };
+        return user as any;
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id as string;
-        token.type = user.type;
+        token.id = user.id;
       }
 
       return token;
     },
-    async session({ session, token }) {
+    async session({
+      session,
+      token,
+    }: {
+      session: ExtendedSession;
+      token: any;
+    }) {
       if (session.user) {
-        session.user.id = token.id;
-        session.user.type = token.type;
+        session.user.id = token.id as string;
       }
 
       return session;

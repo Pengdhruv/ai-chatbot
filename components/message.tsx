@@ -12,13 +12,13 @@ import { MessageActions } from './message-actions';
 import { PreviewAttachment } from './preview-attachment';
 import { Weather } from './weather';
 import equal from 'fast-deep-equal';
-import { cn, sanitizeText } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { MessageEditor } from './message-editor';
 import { DocumentPreview } from './document-preview';
 import { MessageReasoning } from './message-reasoning';
-import type { UseChatHelpers } from '@ai-sdk/react';
+import { UseChatHelpers } from '@ai-sdk/react';
 
 const PurePreviewMessage = ({
   chatId,
@@ -28,7 +28,6 @@ const PurePreviewMessage = ({
   setMessages,
   reload,
   isReadonly,
-  requiresScrollPadding,
 }: {
   chatId: string;
   message: UIMessage;
@@ -37,7 +36,6 @@ const PurePreviewMessage = ({
   setMessages: UseChatHelpers['setMessages'];
   reload: UseChatHelpers['reload'];
   isReadonly: boolean;
-  requiresScrollPadding: boolean;
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
 
@@ -67,25 +65,20 @@ const PurePreviewMessage = ({
             </div>
           )}
 
-          <div
-            className={cn('flex flex-col gap-4 w-full', {
-              'min-h-96': message.role === 'assistant' && requiresScrollPadding,
-            })}
-          >
-            {message.experimental_attachments &&
-              message.experimental_attachments.length > 0 && (
-                <div
-                  data-testid={`message-attachments`}
-                  className="flex flex-row justify-end gap-2"
-                >
-                  {message.experimental_attachments.map((attachment) => (
-                    <PreviewAttachment
-                      key={attachment.url}
-                      attachment={attachment}
-                    />
-                  ))}
-                </div>
-              )}
+          <div className="flex flex-col gap-4 w-full">
+            {message.experimental_attachments && (
+              <div
+                data-testid={`message-attachments`}
+                className="flex flex-row justify-end gap-2"
+              >
+                {message.experimental_attachments.map((attachment) => (
+                  <PreviewAttachment
+                    key={attachment.url}
+                    attachment={attachment}
+                  />
+                ))}
+              </div>
+            )}
 
             {message.parts?.map((part, index) => {
               const { type } = part;
@@ -130,7 +123,7 @@ const PurePreviewMessage = ({
                             message.role === 'user',
                         })}
                       >
-                        <Markdown>{sanitizeText(part.text)}</Markdown>
+                        <Markdown>{part.text}</Markdown>
                       </div>
                     </div>
                   );
@@ -242,8 +235,6 @@ export const PreviewMessage = memo(
   (prevProps, nextProps) => {
     if (prevProps.isLoading !== nextProps.isLoading) return false;
     if (prevProps.message.id !== nextProps.message.id) return false;
-    if (prevProps.requiresScrollPadding !== nextProps.requiresScrollPadding)
-      return false;
     if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
     if (!equal(prevProps.vote, nextProps.vote)) return false;
 
@@ -257,7 +248,7 @@ export const ThinkingMessage = () => {
   return (
     <motion.div
       data-testid="message-assistant-loading"
-      className="w-full mx-auto max-w-3xl px-4 group/message min-h-96"
+      className="w-full mx-auto max-w-3xl px-4 group/message "
       initial={{ y: 5, opacity: 0 }}
       animate={{ y: 0, opacity: 1, transition: { delay: 1 } }}
       data-role={role}

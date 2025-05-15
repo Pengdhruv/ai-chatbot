@@ -54,8 +54,7 @@
         "noUselessStringConcat": "warn", // Not in recommended ruleset, turning on manually
         "noForEach": "off", // forEach is too familiar to ban
         "noUselessSwitchCase": "off", // Turned off due to developer preferences
-        "noUselessThisAlias": "off", // Turned off due to developer preferences
-        "noBannedTypes": "off"
+        "noUselessThisAlias": "off" // Turned off due to developer preferences
       },
       "correctness": {
         "noUnusedImports": "warn", // Not in recommended ruleset, turning on manually

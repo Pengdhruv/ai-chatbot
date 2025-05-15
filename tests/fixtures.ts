@@ -1,48 +1,31 @@
 import { expect as baseExpect, test as baseTest } from '@playwright/test';
-import { createAuthenticatedContext, type UserContext } from './helpers';
-import { getUnixTime } from 'date-fns';
+import { createAuthenticatedContext, type UserContext } from './auth-helper';
 
 interface Fixtures {
   adaContext: UserContext;
   babbageContext: UserContext;
-  curieContext: UserContext;
 }
 
-export const test = baseTest.extend<{}, Fixtures>({
+export const test = baseTest.extend<any, Fixtures>({
   adaContext: [
-    async ({ browser }, use, workerInfo) => {
+    async ({ browser }, use) => {
       const ada = await createAuthenticatedContext({
         browser,
-        name: `ada-${workerInfo.workerIndex}-${getUnixTime(new Date())}`,
+        name: 'ada',
       });
-
       await use(ada);
       await ada.context.close();
     },
     { scope: 'worker' },
   ],
   babbageContext: [
-    async ({ browser }, use, workerInfo) => {
+    async ({ browser }, use) => {
       const babbage = await createAuthenticatedContext({
         browser,
-        name: `babbage-${workerInfo.workerIndex}-${getUnixTime(new Date())}`,
+        name: 'babbage',
       });
-
       await use(babbage);
       await babbage.context.close();
-    },
-    { scope: 'worker' },
-  ],
-  curieContext: [
-    async ({ browser }, use, workerInfo) => {
-      const curie = await createAuthenticatedContext({
-        browser,
-        name: `curie-${workerInfo.workerIndex}-${getUnixTime(new Date())}`,
-        chatModel: 'chat-model-reasoning',
-      });
-
-      await use(curie);
-      await curie.context.close();
     },
     { scope: 'worker' },
   ],

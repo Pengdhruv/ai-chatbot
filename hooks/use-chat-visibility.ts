@@ -12,10 +12,10 @@ import type { VisibilityType } from '@/components/visibility-selector';
 
 export function useChatVisibility({
   chatId,
-  initialVisibilityType,
+  initialVisibility,
 }: {
   chatId: string;
-  initialVisibilityType: VisibilityType;
+  initialVisibility: VisibilityType;
 }) {
   const { mutate, cache } = useSWRConfig();
   const history: ChatHistory = cache.get('/api/history')?.data;
@@ -24,7 +24,7 @@ export function useChatVisibility({
     `${chatId}-visibility`,
     null,
     {
-      fallbackData: initialVisibilityType,
+      fallbackData: initialVisibility,
     },
   );
 
