@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import {
   Tabs,
   TabsContent,
@@ -69,9 +69,6 @@ export function AdminDashboard({
             Token Analytics
           </TabsTrigger>
 
-          <TabsTrigger value="user-analytics" className={tabTriggerClass}>
-            User Analytics
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-6">
@@ -82,14 +79,13 @@ export function AdminDashboard({
           <TokenRequestManagement tokenRequests={tokenRequests} />
         </TabsContent>
 
-        {/* <TabsContent value="token-analytics" className="mt-6">
-          <TokenAnalytics tokenUsageData={tokenUsageData} />
+        <TabsContent value="token-analytics" className="mt-6">
+          <Suspense fallback={<div className="text-center text-sm text-muted-foreground">Loading analytics...</div>}>
+            <TokenAnalytics tokenUsageData={tokenUsageData} userTokenUsage={userTokenUsage} />
+          </Suspense>
         </TabsContent>
-
-        <TabsContent value="user-analytics" className="mt-6">
-          <UserAnalytics userTokenUsage={userTokenUsage} />
-        </TabsContent> */}
-      </Tabs>
+        </Tabs>
     </section>
+
   );
 }
