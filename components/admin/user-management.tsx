@@ -84,7 +84,7 @@ export function UserManagement({ usersWithUsage }: UserManagementProps) {
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold">Token Summary</h2>
+        <h2 className="text-lg font-semibold">Token Allocation Summary</h2>
         <ul className="text-sm text-muted-foreground grid md:grid-cols-3 gap-2">
           {chatModels.map((model) => (
             <li key={model.id}>
@@ -92,6 +92,7 @@ export function UserManagement({ usersWithUsage }: UserManagementProps) {
             </li>
           ))}
         </ul>
+        <hr></hr>
       </div>
 
       <Table>
