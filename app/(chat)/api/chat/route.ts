@@ -18,13 +18,15 @@ import {
   getMostRecentUserMessage,
   getTrailingMessageId,
 } from '@/lib/utils';
-import { generateTitleFromUserMessage } from '../../actions';
+import { generateTitleFromUserMessage, updateTokenUsageForChat } from '../../actions';
 import { createDocument } from '@/lib/ai/tools/create-document';
 import { updateDocument } from '@/lib/ai/tools/update-document';
 import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
 import { isProductionEnvironment } from '@/lib/constants';
 import { myProvider } from '@/lib/ai/providers';
+
+import { checkTokenBudget } from "@/lib/middleware/token-budget-middleware"
 
 export const maxDuration = 60;
 
@@ -51,6 +53,32 @@ export async function POST(request: Request) {
     if (!userMessage) {
       return new Response('No user message found', { status: 400 });
     }
+
+        // Get the user message content as string for token calculation
+        const userMessageContent = userMessage.parts
+        .map((part) => (typeof part === "string" ? part : JSON.stringify(part)))
+        .join(" ")
+  
+      // Estimate token usage for budget check (simple estimation)
+      const estimatedTokens = userMessageContent.length * 2 // Simple estimation
+  
+      try {
+        // Check if user has enough token budget
+        await checkTokenBudget({
+          userId: session.user.id,
+          modelId: selectedChatModel,
+          estimatedTokens,
+        })
+      } catch (error) {
+        return Response.json(
+          {
+            error: 'INSUFFICIENT_BUDGET',
+            message: error instanceof Error ? error.message : 'Insufficient token budget',
+          },
+          { status: 403 },
+        );
+      }
+  
 
     const chat = await getChatById({ id });
 
@@ -137,8 +165,18 @@ export async function POST(request: Request) {
                     },
                   ],
                 });
-              } catch (_) {
-                console.error('Failed to save chat');
+                // Calculate and update token usage
+                const assistantMessageContent = assistantMessage.parts
+                .map((part) => (typeof part === "string" ? part : JSON.stringify(part)))
+                .join(" ")
+
+              await updateTokenUsageForChat({
+                modelId: selectedChatModel,
+                prompt: userMessageContent,
+                response: assistantMessageContent,
+              })
+            } catch (error) {
+              console.error("Failed to save chat or update token usage", error)
               }
             }
           },

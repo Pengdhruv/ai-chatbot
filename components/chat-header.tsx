@@ -1,75 +1,73 @@
-'use client';
+"use client"
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useWindowSize } from 'usehooks-ts';
+import { useEffect, useState } from "react"
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
+import { ModelSelector } from "@/components/model-selector"
+import { VisibilitySelector } from "@/components/visibility-selector"
+import { TokenBudgetDisplay } from "@/components/token-budget-display"
+import { getTokenBudgetForModel } from "@/app/(chat)/actions"
 
-import { ModelSelector } from '@/components/model-selector';
-import { SidebarToggle } from '@/components/sidebar-toggle';
-import { Button } from '@/components/ui/button';
-import { PlusIcon, VercelIcon } from './icons';
-import { useSidebar } from './ui/sidebar';
-import { memo } from 'react';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { type VisibilityType, VisibilitySelector } from './visibility-selector';
-
-function PureChatHeader({
-  chatId,
-  selectedModelId,
+export function ChatHeader({
+  id,
+  title,
+  selectedChatModel,
   selectedVisibilityType,
   isReadonly,
+  onChatModelChange,
+  onVisibilityChange,
 }: {
-  chatId: string;
-  selectedModelId: string;
-  selectedVisibilityType: VisibilityType;
-  isReadonly: boolean;
+  id: string
+  title?: string
+  selectedChatModel: string
+  selectedVisibilityType: string
+  isReadonly: boolean
+  onChatModelChange?: (model: string) => void
+  onVisibilityChange?: (visibility: string) => void
 }) {
-  const router = useRouter();
-  const { open } = useSidebar();
+  const { state, openMobile } = useSidebar()
+  const [tokenBudget, setTokenBudget] = useState<{ totalBudget: number; usedBudget: number } | null>(null)
 
-  const { width: windowWidth } = useWindowSize();
+  useEffect(() => {
+    const fetchTokenBudget = async () => {
+      try {
+        const budget = await getTokenBudgetForModel(selectedChatModel)
+        setTokenBudget(budget)
+      } catch (error) {
+        console.error("Failed to fetch token budget:", error)
+      }
+    }
+
+    fetchTokenBudget()
+  }, [selectedChatModel])
+
+  const shouldShowSidebarTrigger = state === "collapsed" || !openMobile
 
   return (
-    <header className="flex sticky top-0 bg-background py-1.5 items-center px-2 md:px-2 gap-2">
-      <SidebarToggle />
+    <header className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b bg-background sm:px-6">
+      <div className="flex flex-wrap items-center gap-3">
+        {/* ✅ Show only if collapsed or closed on mobile */}
+        {shouldShowSidebarTrigger && (
+          <SidebarTrigger className="block md:content" />
+        )}
 
-      {(!open || windowWidth < 768) && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              className="order-2 md:order-1 md:px-2 px-2 md:h-fit ml-auto md:ml-0"
-              onClick={() => {
-                router.push('/');
-                router.refresh();
-              }}
-            >
-              <PlusIcon />
-              <span className="md:sr-only">New Chat</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>New Chat</TooltipContent>
-        </Tooltip>
-      )}
+        <div className="flex flex-wrap items-center gap-3">
+          <ModelSelector selectedModelId={selectedChatModel} onChange={onChatModelChange} />
+          {!isReadonly && (
+            <VisibilitySelector
+              selectedVisibilityType={selectedVisibilityType}
+              onChange={onVisibilityChange}
+            />
+          )}
+        </div>
+      </div>
 
-      {!isReadonly && (
-        <ModelSelector
-          selectedModelId={selectedModelId}
-          className="order-1 md:order-2"
-        />
-      )}
-
-      {!isReadonly && (
-        <VisibilitySelector
-          chatId={chatId}
-          selectedVisibilityType={selectedVisibilityType}
-          className="order-1 md:order-3"
+      {tokenBudget && (
+        <TokenBudgetDisplay
+          modelId={selectedChatModel}
+          availableTokens={tokenBudget.totalBudget}
+          usedTokens={tokenBudget.usedBudget}
         />
       )}
     </header>
-  );
+  )
 }
-
-export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
-  return prevProps.selectedModelId === nextProps.selectedModelId;
-});

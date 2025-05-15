@@ -52,8 +52,21 @@ export function Chat({
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey));
     },
-    onError: () => {
+    onError: (err: any) => {
+      try {
+        const parsed = JSON.parse(err.message);
+    
+        if (parsed?.error === 'INSUFFICIENT_BUDGET') {
+          toast.error(`${parsed.message || 'Token balance exhausted. Request more to continue.'}`);
+          stop();
+          return;
+        }
+      } catch {
+        // It's not JSON or unexpected
+      }
+    
       toast.error('An error occurred, please try again!');
+      stop();
     },
   });
 
@@ -70,7 +83,7 @@ export function Chat({
       <div className="flex flex-col min-w-0 h-dvh bg-background">
         <ChatHeader
           chatId={id}
-          selectedModelId={selectedChatModel}
+          selectedChatModel={selectedChatModel}
           selectedVisibilityType={selectedVisibilityType}
           isReadonly={isReadonly}
         />
