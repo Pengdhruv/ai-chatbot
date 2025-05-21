@@ -64,7 +64,7 @@ export default function Page() {
             >
               Sign up
             </Link>
-            {' for free.'}
+            {' here.'}
           </p>
         </AuthForm>
       </div>
