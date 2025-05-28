@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, forwardRef, useImperativeHandle, useCallback } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { ModelSelector } from "@/components/model-selector"
 import { VisibilitySelector } from "@/components/visibility-selector"
@@ -11,7 +11,16 @@ export interface ChatHeaderRef {
   refreshTokenBudget: () => Promise<void>
 }
 
-export const ChatHeader = forwardRef<ChatHeaderRef, {
+export function ChatHeader({
+  id,
+  title,
+  selectedChatModel,
+  selectedVisibilityType,
+  isReadonly,
+  onChatModelChange,
+  onVisibilityChange,
+  ref,
+}: {
   id: string
   title?: string
   selectedChatModel: string
@@ -19,17 +28,8 @@ export const ChatHeader = forwardRef<ChatHeaderRef, {
   isReadonly: boolean
   onChatModelChange?: (model: string) => void
   onVisibilityChange?: (visibility: string) => void
-}>((props, ref) => {
-  const {
-    id,
-    title,
-    selectedChatModel,
-    selectedVisibilityType,
-    isReadonly,
-    onChatModelChange,
-    onVisibilityChange,
-  } = props
-
+  ref?: React.Ref<ChatHeaderRef>
+}) {
   const { state, openMobile } = useSidebar()
   const [tokenBudget, setTokenBudget] = useState<{ totalBudget: number; usedBudget: number } | null>(null)
 
@@ -46,9 +46,15 @@ export const ChatHeader = forwardRef<ChatHeaderRef, {
     fetchTokenBudget()
   }, [fetchTokenBudget])
 
-  useImperativeHandle(ref, () => ({
-    refreshTokenBudget: fetchTokenBudget
-  }))
+  // Expose methods to parent via ref (React 19 style)
+  useEffect(() => {
+    if (ref && typeof ref === 'function') {
+      ref({ refreshTokenBudget: fetchTokenBudget })
+    } else if (ref && typeof ref === 'object' && ref !== null) {
+      // @ts-ignore - React 19 allows assignment to ref.current
+      ref.current = { refreshTokenBudget: fetchTokenBudget }
+    }
+  }, [fetchTokenBudget, ref])
 
   const shouldShowSidebarTrigger = state === "collapsed" || !openMobile
 
@@ -81,6 +87,4 @@ export const ChatHeader = forwardRef<ChatHeaderRef, {
       )}
     </header>
   )
-})
-
-ChatHeader.displayName = "ChatHeader"
+}
