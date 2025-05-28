@@ -1,21 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, forwardRef, useImperativeHandle, useCallback } from "react"
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { ModelSelector } from "@/components/model-selector"
 import { VisibilitySelector } from "@/components/visibility-selector"
 import { TokenBudgetDisplay } from "@/components/token-budget-display"
 import { getTokenBudgetForModel } from "@/app/(chat)/actions"
 
-export function ChatHeader({
-  id,
-  title,
-  selectedChatModel,
-  selectedVisibilityType,
-  isReadonly,
-  onChatModelChange,
-  onVisibilityChange,
-}: {
+export interface ChatHeaderRef {
+  refreshTokenBudget: () => Promise<void>
+}
+
+export const ChatHeader = forwardRef<ChatHeaderRef, {
   id: string
   title?: string
   selectedChatModel: string
@@ -23,22 +19,36 @@ export function ChatHeader({
   isReadonly: boolean
   onChatModelChange?: (model: string) => void
   onVisibilityChange?: (visibility: string) => void
-}) {
+}>((props, ref) => {
+  const {
+    id,
+    title,
+    selectedChatModel,
+    selectedVisibilityType,
+    isReadonly,
+    onChatModelChange,
+    onVisibilityChange,
+  } = props
+
   const { state, openMobile } = useSidebar()
   const [tokenBudget, setTokenBudget] = useState<{ totalBudget: number; usedBudget: number } | null>(null)
 
-  useEffect(() => {
-    const fetchTokenBudget = async () => {
-      try {
-        const budget = await getTokenBudgetForModel(selectedChatModel)
-        setTokenBudget(budget)
-      } catch (error) {
-        console.error("Failed to fetch token budget:", error)
-      }
+  const fetchTokenBudget = useCallback(async () => {
+    try {
+      const budget = await getTokenBudgetForModel(selectedChatModel)
+      setTokenBudget(budget)
+    } catch (error) {
+      console.error("Failed to fetch token budget:", error)
     }
-
-    fetchTokenBudget()
   }, [selectedChatModel])
+
+  useEffect(() => {
+    fetchTokenBudget()
+  }, [fetchTokenBudget])
+
+  useImperativeHandle(ref, () => ({
+    refreshTokenBudget: fetchTokenBudget
+  }))
 
   const shouldShowSidebarTrigger = state === "collapsed" || !openMobile
 
@@ -66,8 +76,11 @@ export function ChatHeader({
           modelId={selectedChatModel}
           availableTokens={tokenBudget.totalBudget}
           usedTokens={tokenBudget.usedBudget}
+          onBudgetUpdate={fetchTokenBudget}
         />
       )}
     </header>
   )
-}
+})
+
+ChatHeader.displayName = "ChatHeader"

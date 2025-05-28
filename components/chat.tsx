@@ -2,9 +2,9 @@
 
 import type { Attachment, UIMessage } from 'ai';
 import { useChat } from '@ai-sdk/react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
-import { ChatHeader } from '@/components/chat-header';
+import { ChatHeader, type ChatHeaderRef } from '@/components/chat-header';
 import type { Vote } from '@/lib/db/schema';
 import { fetcher, generateUUID } from '@/lib/utils';
 import { Artifact } from './artifact';
@@ -31,6 +31,7 @@ export function Chat({
   isReadonly: boolean;
 }) {
   const { mutate } = useSWRConfig();
+  const chatHeaderRef = useRef<ChatHeaderRef>(null);
 
   const {
     messages,
@@ -49,8 +50,10 @@ export function Chat({
     experimental_throttle: 100,
     sendExtraMessageFields: true,
     generateId: generateUUID,
-    onFinish: () => {
+    onFinish: async () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey));
+      // Refresh token budget after AI response
+      await chatHeaderRef.current?.refreshTokenBudget();
     },
     onError: (err: any) => {
       try {
@@ -59,6 +62,8 @@ export function Chat({
         if (parsed?.error === 'INSUFFICIENT_BUDGET') {
           toast.error(`${parsed.message || 'Token balance exhausted. Request more to continue.'}`);
           stop();
+          // Refresh token budget to show current state
+          chatHeaderRef.current?.refreshTokenBudget();
           return;
         }
       } catch {
@@ -82,7 +87,8 @@ export function Chat({
     <>
       <div className="flex flex-col min-w-0 h-dvh bg-background">
         <ChatHeader
-          chatId={id}
+          ref={chatHeaderRef}
+          id={id}
           selectedChatModel={selectedChatModel}
           selectedVisibilityType={selectedVisibilityType}
           isReadonly={isReadonly}
