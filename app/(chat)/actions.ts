@@ -1,6 +1,6 @@
 'use server';
 
-import { generateText, Message } from 'ai';
+import { generateText, type Message } from 'ai';
 import { cookies } from 'next/headers';
 
 import {
@@ -11,7 +11,7 @@ import {
   updateTokenUsage,
   createTokenRequest,
 } from '@/lib/db/queries';
-import { VisibilityType } from '@/components/visibility-selector';
+import type { VisibilityType } from '@/components/visibility-selector';
 import { myProvider } from '@/lib/ai/providers';
 
 import { calculateTokens } from "@/lib/utils/token-calculator"
@@ -64,7 +64,7 @@ export async function updateChatVisibility({
 export async function getTokenBudgetForModel(modelId: string) {
   const session = await auth()
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return null
   }
 
@@ -87,7 +87,7 @@ export async function updateTokenUsageForChat({
 }) {
   const session = await auth()
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return
   }
 
@@ -113,7 +113,7 @@ export async function requestMoreTokens({
 }) {
   const session = await auth()
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect("/login")
   }
 

@@ -13,9 +13,10 @@ interface TokenBudgetDisplayProps {
   modelId: string
   availableTokens: number
   usedTokens: number
+  onBudgetUpdate?: () => void
 }
 
-export function TokenBudgetDisplay({ modelId, availableTokens, usedTokens }: TokenBudgetDisplayProps) {
+export function TokenBudgetDisplay({ modelId, availableTokens, usedTokens, onBudgetUpdate }: TokenBudgetDisplayProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [requestAmount, setRequestAmount] = useState("10000")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -33,6 +34,8 @@ export function TokenBudgetDisplay({ modelId, availableTokens, usedTokens }: Tok
         requestedAmount: Number.parseInt(requestAmount),
       })
       setIsDialogOpen(false)
+      // Trigger parent component to refresh token budget
+      onBudgetUpdate?.()
     } catch (error) {
       console.error("Failed to request tokens:", error)
     } finally {

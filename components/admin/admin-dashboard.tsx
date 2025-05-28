@@ -18,7 +18,6 @@ import type {
   UserTokenUsage,
 } from "@/lib/db/schema";
 import { RefreshCcw, Home } from "lucide-react";
-import clsx from "clsx";
 import { useRouter } from "next/navigation";
 
 type TabKey = "users" | "requests" | "token-analytics";

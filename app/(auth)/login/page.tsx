@@ -38,7 +38,7 @@ export default function Page() {
       setIsSuccessful(true);
       router.refresh();
     }
-  }, [state.status]);
+  }, [state.status, router]);
 
   const handleSubmit = (formData: FormData) => {
     setEmail(formData.get('email') as string);
@@ -64,7 +64,7 @@ export default function Page() {
             >
               Sign up
             </Link>
-            {' for free.'}
+            {' here.'}
           </p>
         </AuthForm>
       </div>

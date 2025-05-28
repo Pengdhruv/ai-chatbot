@@ -166,7 +166,7 @@ export async function POST(request: Request) {
                   ],
                 });
                 // Calculate and update token usage
-                const assistantMessageContent = assistantMessage.parts
+                const assistantMessageContent = (assistantMessage.parts || [])
                 .map((part) => (typeof part === "string" ? part : JSON.stringify(part)))
                 .join(" ")
 

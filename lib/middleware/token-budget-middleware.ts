@@ -20,8 +20,12 @@ export async function checkTokenBudget({
 
   const remainingTokens = budget.totalBudget - budget.usedBudget
 
+  if (remainingTokens <= 0) {
+    throw new Error(`Token budget exhausted (${remainingTokens.toLocaleString()} remaining). Please request more tokens.`)
+  }
+
   if (remainingTokens < estimatedTokens) {
-    throw new Error("Insufficient token budget. Please request more tokens.")
+    throw new Error(`Insufficient token budget (${remainingTokens.toLocaleString()} remaining, ~${estimatedTokens.toLocaleString()} needed). Please request more tokens.`)
   }
 
   return true
