@@ -51,7 +51,7 @@ export default function Footer() {
                 Please note: <strong>Penguin International does not access the content of your conversations unless a review is triggered by a security or policy concern</strong>.
               </p>
               <p>
-                This tool is part of our broader initiative to empower employees to explore and adopt LLM tools responsibly and effectively. We're committed to creating a safe, secure, and supportive environment to encourage widespread and innovative use of AI technology across the organization.
+                This tool is part of our broader initiative to empower employees to explore and adopt LLM tools responsibly and effectively. We&apos;re committed to creating a safe, secure, and supportive environment to encourage widespread and innovative use of AI technology across the organization.
               </p>
             </TabsContent>
 

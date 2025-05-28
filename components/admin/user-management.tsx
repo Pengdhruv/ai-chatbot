@@ -20,6 +20,71 @@ import { updateUserAdminStatus, upsertTokenBudget, bulkUpdateTokenBudget, bulkSe
 import type { UserTokenUsage } from "@/lib/db/schema";
 import { toast } from "sonner";
 
+// User row component to handle dialog states properly
+function UserRow({ 
+  user, 
+  selectedUsers, 
+  setSelectedUsers 
+}: { 
+  user: UserTokenUsage; 
+  selectedUsers: Record<string, boolean>; 
+  setSelectedUsers: React.Dispatch<React.SetStateAction<Record<string, boolean>>>; 
+}) {
+  const [isManageOpen, setIsManageOpen] = useState(false);
+  const [isAllocationOpen, setIsAllocationOpen] = useState(false);
+
+  return (
+    <TableRow key={user.id}>
+      <TableCell>
+        <Checkbox
+          checked={!!selectedUsers[user.id]}
+          onCheckedChange={(checked) =>
+            setSelectedUsers((prev) => ({ ...prev, [user.id]: !!checked }))
+          }
+        />
+      </TableCell>
+      <TableCell className="truncate max-w-xs">{user.email}</TableCell>
+      <TableCell>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id={`admin-${user.id}`}
+            checked={user.is_admin}
+            onCheckedChange={async () => {
+              const newVal = !user.is_admin;
+              await updateUserAdminStatus({ userId: user.id, is_admin: newVal });
+              user.is_admin = newVal;
+            }}
+          />
+          <Label htmlFor={`admin-${user.id}`}>Admin</Label>
+        </div>
+      </TableCell>
+      <TableCell>
+        <Dialog open={isManageOpen} onOpenChange={setIsManageOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="mr-2">Manage Tokens</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Manage Token Budgets for {user.email}</DialogTitle>
+            </DialogHeader>
+            <TokenBudgetForm userId={user.id} onComplete={() => setIsManageOpen(false)} />
+          </DialogContent>
+        </Dialog>
+
+        <TokenAllocationDialog
+          user={user}
+          open={isAllocationOpen}
+          onOpenChange={setIsAllocationOpen}
+        />
+
+        <Button variant="secondary" size="sm" onClick={() => setIsAllocationOpen(true)}>
+          View Allocations
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 
 interface UserManagementProps {
   usersWithUsage: UserTokenUsage[];
@@ -92,7 +157,7 @@ export function UserManagement({ usersWithUsage }: UserManagementProps) {
             </li>
           ))}
         </ul>
-        <hr></hr>
+        <hr />
       </div>
 
       <Table>
@@ -118,63 +183,12 @@ export function UserManagement({ usersWithUsage }: UserManagementProps) {
 
         <TableBody>
           {filteredUsers.map((user) => (
-            <TableRow key={user.id}>
-              <TableCell>
-                <Checkbox
-                  checked={!!selectedUsers[user.id]}
-                  onCheckedChange={(checked) =>
-                    setSelectedUsers((prev) => ({ ...prev, [user.id]: !!checked }))
-                  }
-                />
-              </TableCell>
-              <TableCell className="truncate max-w-xs">{user.email}</TableCell>
-              <TableCell>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id={`admin-${user.id}`}
-                    checked={user.is_admin}
-                    onCheckedChange={async () => {
-                      const newVal = !user.is_admin;
-                      await updateUserAdminStatus({ userId: user.id, is_admin: newVal });
-                      user.is_admin = newVal;
-                    }}
-                  />
-                  <Label htmlFor={`admin-${user.id}`}>Admin</Label>
-                </div>
-              </TableCell>
-              <TableCell>
-                {(() => {
-                  const [isManageOpen, setIsManageOpen] = useState(false);
-                  const [isAllocationOpen, setIsAllocationOpen] = useState(false);
-
-                  return (
-                    <>
-                      <Dialog open={isManageOpen} onOpenChange={setIsManageOpen}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="mr-2">Manage Tokens</Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-md">
-                          <DialogHeader>
-                            <DialogTitle>Manage Token Budgets for {user.email}</DialogTitle>
-                          </DialogHeader>
-                          <TokenBudgetForm userId={user.id} onComplete={() => setIsManageOpen(false)} />
-                        </DialogContent>
-                      </Dialog>
-
-                      <TokenAllocationDialog
-                        user={user}
-                        open={isAllocationOpen}
-                        onOpenChange={setIsAllocationOpen}
-                      />
-
-                      <Button variant="secondary" size="sm" onClick={() => setIsAllocationOpen(true)}>
-                        View Allocations
-                      </Button>
-                    </>
-                  );
-                })()}
-              </TableCell>
-            </TableRow>
+            <UserRow 
+              key={user.id}
+              user={user} 
+              selectedUsers={selectedUsers} 
+              setSelectedUsers={setSelectedUsers} 
+            />
           ))}
         </TableBody>
       </Table>
@@ -422,7 +436,7 @@ export function TokenAllocationDialog({ user, open, onOpenChange }: TokenAllocat
     try {
       setLoadingModelId(modelId);
       const current = user.modelUsage.find((m) => m.modelId === modelId);
-      const total = (current?.totalBudget || 0) + parseInt(newAmount);
+      const total = (current?.totalBudget || 0) + Number.parseInt(newAmount);
       await upsertTokenBudget({ userId: user.id, modelId, totalBudget: total });
       toast.success(`${newAmount} tokens added to ${modelId}`);
 

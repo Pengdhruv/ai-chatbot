@@ -5,8 +5,6 @@ import {
   getTokenUsageData,
   getUserTokenUsage,
 } from "@/lib/db/queries";
-import { redirect } from "next/navigation";
-import { auth } from "@/app/(auth)/auth";
 
 export default async function AdminPage() {
   // const session = await auth();

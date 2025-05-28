@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
 import type { TokenUsageData, UserTokenUsage } from "@/lib/db/schema";
 import { format } from "date-fns";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid, Legend } from "recharts";
@@ -134,7 +132,7 @@ export function TokenAnalytics({ tokenUsageData, userTokenUsage }: TokenAnalytic
                             <div
                               className="bg-primary h-2 rounded-full"
                               style={{ width: `${Math.min(pct * 100, 100)}%` }}
-                            ></div>
+                            />
                           </div>
                           <span className="text-muted-foreground">{mu.usedBudget.toLocaleString()} / {mu.totalBudget.toLocaleString()}</span>
                         </div>
