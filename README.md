@@ -1,7 +1,7 @@
 # 🚀 Enterprise AI Chatbot Platform
 
 <div align="center">
-  <img alt="Enterprise-ready AI chatbot with admin controls and token management" src="app/(chat)/opengraph-image.png" width="600">
+  <img alt="Enterprise-ready AI chatbot with admin controls and token management" src="app/(chat)/demo-image.png" width="600">
   <h2>Enterprise-Ready AI Chatbot Platform</h2>
   <p><strong>Built by Penguin International • Tailored for Organizations</strong></p>
 </div>
